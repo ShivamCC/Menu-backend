@@ -20,7 +20,7 @@ app.mount("/", StaticFiles(directory="static", html=True), name="static")
 # Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://menufrontend-six.vercel.app"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
