@@ -28,6 +28,11 @@ HEADERS = {
     "Connection": "keep-alive",
 }
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
 # ---------- Utility functions ----------
 
 def safe_get_json(resp):
