@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Swiggy Menu Preview (Cards)</title>
+
+  <style>
+    body { font-family: Arial, sans-serif; background:#f3f4f6; margin:0; padding:20px; }
+    .wrap { max-width:1100px; margin:0 auto; }
+
+    /* Top input area */
+    .top { background:white; padding:20px; border-radius:50px; 
+           box-shadow:0 4px 12px rgba(0,0,0,0.06); 
+           display:flex; gap:12px; align-items:center; }
+
+    input[type="text"]{ flex:1; padding:12px; border-radius:8px; 
+                        border:1px solid #ddd; font-size:16px; }
+
+    button { padding:12px 16px; border-radius:8px; border:none; 
+             cursor:pointer; font-weight:600; }
+    .btn-primary{ background:#2563eb; color:white; }
+    .btn-secondary{ background:#059669; color:white; }
+
+    /* TABS */
+    .tabs { margin-top:20px; display:flex; gap:20px; }
+    .tab { padding:10px 15px; cursor:pointer; font-weight:600; color:#374151; }
+    .tab.active { border-bottom:3px solid #2563eb; color:#2563eb; }
+    #resids {
+  flex: 2;        /* grow twice as much as other items */
+  padding:12px; 
+  border-radius:50px; 
+  border:1px solid #ddd; 
+  font-size:16px; 
+}
+    #msg{ margin-top:10px; color:#374151; }
+
+    /* Sub-tabs for each restaurant */
+    .subTabs { margin-top:15px; display:flex; gap:10px; flex-wrap:wrap; }
+    .subTab { padding:6px 12px; cursor:pointer; border-radius:6px; background:#e5e7eb; }
+    .subTab.active { background:#2563eb; color:white; }
+
+    /* Card grid */
+    .grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(300px,1fr)); 
+           gap:16px; margin-top:20px; }
+
+    .card{ background:white; border-radius:10px; padding:12px; display:flex; 
+           gap:12px; box-shadow:0 6px 18px rgba(0,0,0,0.06); align-items:flex-start; }
+
+    .card img{ width:120px; height:120px; object-fit:cover; border-radius:8px; }
+
+    .info{ flex:1; }
+    .dish{ font-size:18px; font-weight:700; margin-bottom:6px; }
+    .meta{ color:#6b7280; font-size:13px; margin-bottom:6px; }
+    .price{ font-weight:700; font-size:16px; margin-bottom:6px; }
+    .badge{ display:inline-block; padding:4px 8px; border-radius:999px; font-weight:600; font-size:12px; }
+    .green{ background:#dcfce7; color:#059669; }
+    .red{ background:#fee2e2; color:#b91c1c; }
+    .orange{ background:#fff7ed; color:#c2410c; }
+    .variants{ margin-top:8px; font-size:13px; color:#374151; }
+    .desc{ margin-top:8px; color:#4b5563; font-size:14px; }
+
+    /* Three-dot menu */
+    .menu-wrapper { position: relative; display: inline-block; }
+    .menu-btn { font-size:24px; cursor:pointer; padding:0 8px; }
+    .menu-content { display:none; position:absolute; right:0; background:#fff; border:1px solid #ccc; border-radius:6px;
+                    box-shadow:0 2px 10px rgba(0,0,0,0.2); min-width:180px; z-index:10; }
+    .menu-content div { padding:10px; cursor:pointer; }
+    .menu-content div:hover { background:#2563eb; color:white; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <!-- top inputs -->
+    <div class="top">
+      <input id="resids" placeholder="Enter restaurant IDs (comma-separated) e.g. 581544,487590" />
+      <div class="menu-wrapper">
+        <span class="menu-btn" onclick="toggleMenu()">⋮</span>
+        <div class="menu-content" id="filterMenu">
+          <div onclick="applyFilter('flash')">Flash Sale</div>
+          <div onclick="applyFilter('noimage')">Items without Images</div>
+          <div onclick="applyFilter('outofstock')">Out of Stock</div>
+          <div onclick="applyFilter('all')">Show All</div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="loadPreview()">Preview</button>
+      <button class="btn-secondary" id="downloadBtn" onclick="downloadExcel()" style="display:none">Download Excel</button>
+    </div>
+
+    <!-- Main TABS -->
+    <div class="tabs">
+      <div class="tab active" id="tabMenu" onclick="switchTab('menu')">Menu</div>
+      <div class="tab" id="tabOffers" onclick="switchTab('offers')">Offers</div>
+    </div>
+
+    <div id="msg"></div>
+
+    <!-- SEARCH BAR -->
+    <div style="margin-top:15px;">
+      <input 
+        id="searchBox" 
+        placeholder="Search dishes, categories, images..." 
+        oninput="filterMenu()" 
+        style="width:100%; padding:12px; border-radius:8px; border:1px solid #ccc; font-size:16px;"
+      />
+    </div>
+
+    <!-- Sub-tabs per restaurant -->
+    <div id="subTabsMenu" class="subTabs"></div>
+    <div id="subTabsOffers" class="subTabs"></div>
+
+    <!-- grid containers -->
+    <div id="gridMenu" class="grid"></div>
+    <div id="gridOffers" class="grid" style="display:none"></div>
+
+  </div>
+
+<script>
+const API_URL = "";
+let previewData = {}; 
+let restaurantTabs = [];
+let activeMenuResId = null;
+let activeOffersResId = null;
+let currentFilter = 'all';
+
+/* ---------------- TAB SWITCH ---------------- */
+function switchTab(tab){
+  document.getElementById("tabMenu").classList.remove("active");
+  document.getElementById("tabOffers").classList.remove("active");
+
+  if(tab === "menu"){
+    document.getElementById("tabMenu").classList.add("active");
+    document.getElementById("gridMenu").style.display = "grid";
+    document.getElementById("gridOffers").style.display = "none";
+    document.getElementById("subTabsMenu").style.display = "flex";
+    document.getElementById("subTabsOffers").style.display = "none";
+  } else {
+    document.getElementById("tabOffers").classList.add("active");
+    document.getElementById("gridMenu").style.display = "none";
+    document.getElementById("gridOffers").style.display = "grid";
+    document.getElementById("subTabsMenu").style.display = "none";
+    document.getElementById("subTabsOffers").style.display = "flex";
+  }
+}
+
+function formatPrice(p){
+  if(p===null || p===undefined) return "-";
+  return "₹ " + Number(p).toFixed(2);
+}
+
+/* ---------------- THREE DOT MENU ---------------- */
+function toggleMenu(){
+  const menu = document.getElementById("filterMenu");
+  menu.style.display = menu.style.display === "block" ? "none" : "block";
+}
+function applyFilter(filter){
+  currentFilter = filter;
+  renderMenuItems();
+  toggleMenu();
+}
+
+/* ---------------- LOAD PREVIEW ---------------- */
+async function loadPreview(){
+  const val = document.getElementById("resids").value.trim();
+  const msg = document.getElementById("msg");
+  const downloadBtn = document.getElementById("downloadBtn");
+
+  document.getElementById("gridMenu").innerHTML = "";
+  document.getElementById("gridOffers").innerHTML = "";
+  document.getElementById("subTabsMenu").innerHTML = "";
+  document.getElementById("subTabsOffers").innerHTML = "";
+  previewData = {};
+  restaurantTabs = [];
+  activeMenuResId = null;
+  activeOffersResId = null;
+  currentFilter = 'all';
+
+  if(!val){
+    msg.textContent = "Enter at least one restaurant ID.";
+    return;
+  }
+
+  msg.textContent = "Fetching preview…";
+  downloadBtn.style.display = "none";
+
+  const ids = val.split(",").map(x=>x.trim()).filter(Boolean);
+
+  for(const rid of ids){
+    try{
+      const res = await fetch(`${API_URL}/swiggy/preview?res_id=${encodeURIComponent(rid)}`);
+      const json = await res.json();
+      const subzoneName = (json.items && json.items[0] && json.items[0].subzone) || rid;
+      previewData[rid] = {items: json.items || [], offers: json.offers || [], subzone: subzoneName};
+      restaurantTabs.push(rid);
+    } catch(e){
+      console.error(`Error fetching ${rid}:`, e);
+      previewData[rid] = {items: [], offers: []};
+      restaurantTabs.push(rid);
+    }
+  }
+
+  renderSubTabs();
+  msg.textContent = `Fetched data for ${restaurantTabs.length} restaurant(s).`;
+  downloadBtn.style.display = "inline-block";
+}
+
+/* ---------------- RENDER SUB-TABS ---------------- */
+function renderSubTabs(){
+  const subTabsMenu = document.getElementById("subTabsMenu");
+  const subTabsOffers = document.getElementById("subTabsOffers");
+  subTabsMenu.innerHTML = "";
+  subTabsOffers.innerHTML = "";
+
+  restaurantTabs.forEach(rid => {
+    const tabMenu = document.createElement("div");
+    tabMenu.className = "subTab";
+    tabMenu.textContent = previewData[rid].subzone;
+    tabMenu.dataset.rid = rid;
+    tabMenu.onclick = () => {
+      activeMenuResId = rid;
+      renderMenuItems();
+      setActiveSubTab(subTabsMenu, rid);
+    };
+    subTabsMenu.appendChild(tabMenu);
+
+    const tabOffers = document.createElement("div");
+    tabOffers.className = "subTab";
+    tabOffers.textContent = previewData[rid].subzone;
+    tabOffers.dataset.rid = rid;
+    tabOffers.onclick = () => {
+      activeOffersResId = rid;
+      renderOffersItems();
+      setActiveSubTab(subTabsOffers, rid);
+    };
+    subTabsOffers.appendChild(tabOffers);
+  });
+
+  if(restaurantTabs.length){
+    activeMenuResId = restaurantTabs[0];
+    activeOffersResId = restaurantTabs[0];
+    renderMenuItems();
+    renderOffersItems();
+    setActiveSubTab(subTabsMenu, activeMenuResId);
+    setActiveSubTab(subTabsOffers, activeOffersResId);
+  }
+}
+
+function setActiveSubTab(container, rid){
+  Array.from(container.children).forEach(c=>{
+    c.classList.toggle("active", c.dataset.rid === rid);
+  });
+}
+
+/* ---------------- RENDER ITEMS ---------------- */
+function renderMenuItems(){
+  const gridMenu = document.getElementById("gridMenu");
+  gridMenu.innerHTML = "";
+  if(!previewData || !activeMenuResId) return;
+
+  let items = previewData[activeMenuResId].items || [];
+
+  // Apply filters
+  if(currentFilter==='flash') items = items.filter(i => i.flashSale==="ON");
+  if(currentFilter==='noimage') items = items.filter(i => !i.image);
+  if(currentFilter==='outofstock') items = items.filter(i => !i.inStock);
+
+  items.forEach(it => {
+    const img = it.image || "https://via.placeholder.com/120";
+    const inStock = it.inStock ? true : false;
+    const badge = inStock ? `<span class="badge green">In Stock</span>` : `<span class="badge red">Out of Stock</span>`;
+    const flash = (it.flashSale==="ON") ? `<span class="badge orange">Flash</span>` : "";
+    const variantsHtml = (it.variants && it.variants.length) 
+        ? `<div class="variants"><strong>Variants:</strong> ${it.variants.map(v => 
+            `${v.variant_group || ""}: ${v.variant_name || ""} (+${formatPrice(v.variant_price_add)})`
+          ).join(" | ")}</div>` 
+        : "";
+
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <img src="${img}" onerror="this.src='https://via.placeholder.com/120'">
+      <div class="info">
+        <div class="dish">${escapeHtml(it.dish_name)}</div>
+        <div class="meta">${escapeHtml(it.category)} • ${escapeHtml(it.restaurant)}</div>
+        <div class="price">${formatPrice(it.base_price)}</div>
+        <div>${badge} ${flash}</div>
+        ${variantsHtml}
+        ${it.description ? `<div class="desc">${escapeHtml(it.description)}</div>` : ""}
+      </div>
+    `;
+    gridMenu.appendChild(card);
+  });
+}
+
+function renderOffersItems(){
+  const gridOffers = document.getElementById("gridOffers");
+  gridOffers.innerHTML = "";
+  if(!previewData || !activeOffersResId) return;
+
+  (previewData[activeOffersResId].offers || []).forEach(of => {
+    const img = of.image || "https://via.placeholder.com/120";
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <img src="${img}">
+      <div class="info">
+        <div class="dish">${escapeHtml(of.title || "Offer")}</div>
+        <div class="meta">${escapeHtml(of.code || "")}</div>
+        <div class="desc">${escapeHtml(of.description || "")}</div>
+        <div class="price">Discount: ${escapeHtml(of.discount || "")}</div>
+      </div>
+    `;
+    gridOffers.appendChild(card);
+  });
+}
+
+/* ---------------- DOWNLOAD EXCEL ---------------- */
+async function downloadExcel(){
+  const val = document.getElementById("resids").value.trim();
+  if(!val) return alert("Enter restaurant IDs first");
+
+  try{
+    const resp = await fetch(`${API_URL}/swiggy/download?res_id=${encodeURIComponent(val)}`);
+    if(!resp.ok) throw new Error("Download failed");
+
+    const blob = await resp.blob();
+    const header = resp.headers.get("Content-Disposition") || "";
+    let filename = "swiggy_menu.xlsx";
+
+    if(header.includes("filename=")){
+      filename = header.split("filename=")[1].replace(/"/g,'').trim();
+    }
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+  } catch (err){
+    console.error(err);
+    alert("Download failed.");
+  }
+}
+
+function escapeHtml(s){
+  if(!s) return "";
+  return s.replace(/&/g,"&amp;")
+          .replace(/</g,"&lt;")
+          .replace(/>/g,"&gt;")
+          .replace(/"/g,"&quot;");
+}
+
+/* ---------------- SEARCH FILTER ---------------- */
+function filterMenu(){
+  const q = document.getElementById("searchBox").value.toLowerCase().trim();
+  const gridMenu = document.getElementById("gridMenu");
+  gridMenu.innerHTML = "";
+  if(!previewData || !activeMenuResId) return;
+
+  let items = previewData[activeMenuResId].items || [];
+
+  // Apply three-dot filter
+  if(currentFilter==='flash') items = items.filter(i => i.flashSale==="ON");
+  if(currentFilter==='noimage') items = items.filter(i => !i.image);
+  if(currentFilter==='outofstock') items = items.filter(i => !i.inStock);
+
+  const filtered = items.filter(it=>{
+    const text = ((it.dish_name||"") + " " + (it.category||"") + " " + (it.description||"")).toLowerCase();
+    return text.includes(q);
+  });
+
+  filtered.forEach(it=>{
+    const img = it.image || "https://via.placeholder.com/120";
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <img src="${img}" onerror="this.src='https://via.placeholder.com/120'">
+      <div class="info">
+        <div class="dish">${escapeHtml(it.dish_name)}</div>
+        <div class="meta">${escapeHtml(it.category)} • ${escapeHtml(it.restaurant)}</div>
+        <div class="price">${formatPrice(it.base_price)}</div>
+        ${it.description ? `<div class="desc">${escapeHtml(it.description)}</div>` : ""}
+      </div>
+    `;
+    gridMenu.appendChild(card);
+  });
+}
+</script>
+</body>
+</html>

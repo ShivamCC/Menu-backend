@@ -1,4 +1,8 @@
 # main.py
+from fastapi.staticfiles import StaticFiles
+
+# Serve frontend
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 from fastapi import FastAPI, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
