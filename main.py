@@ -13,7 +13,7 @@ app = FastAPI()
 # Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://menufrontend-six.vercel.app/"],
+    allow_origins=["https://menufrontend-six.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
