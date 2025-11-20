@@ -15,7 +15,7 @@ app = FastAPI()
 
 
 # Serve frontend
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 # Allow frontend access
 app.add_middleware(
