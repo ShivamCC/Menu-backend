@@ -76,7 +76,7 @@
     <!-- top inputs -->
     <div class="top">
       <input id="resids" placeholder="Enter restaurant IDs (comma-separated) e.g. 581544,487590" />
-      <div class="menu-wrapper">
+      <!-- <div class="menu-wrapper">
         <span class="menu-btn" onclick="toggleMenu()">⋮</span>
         <div class="menu-content" id="filterMenu">
           <div onclick="applyFilter('flash')">Flash Sale</div>
@@ -84,7 +84,7 @@
           <div onclick="applyFilter('outofstock')">Out of Stock</div>
           <div onclick="applyFilter('all')">Show All</div>
         </div>
-      </div>
+      </div> -->
       <button class="btn-primary" onclick="loadPreview()">Preview</button>
       <button class="btn-secondary" id="downloadBtn" onclick="downloadExcel()" style="display:none">Download Excel</button>
     </div>
@@ -96,6 +96,16 @@
     </div>
 
     <div id="msg"></div>
+
+
+
+    <div class="filter-bar" style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+  <button class="filter-btn" onclick="applyFilter('flash')">Flash Sale</button>
+  <button class="filter-btn" onclick="applyFilter('noimage')">No Image</button>
+  <button class="filter-btn" onclick="applyFilter('outofstock')">Out of Stock</button>
+  <button class="filter-btn active" onclick="applyFilter('all')">Show All</button>
+</div>
+
 
     <!-- SEARCH BAR -->
     <div style="margin-top:15px;">
