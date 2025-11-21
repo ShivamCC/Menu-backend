@@ -180,6 +180,11 @@ def extract_offers_from_data(data):
 
                 for o in offers_candidates:
                     info = o.get("info", {})
+                    logo_path = info.get("offerLogo")
+                    if logo_path:
+                        image_url = f"https://media-assets.swiggy.com/swiggy/image/upload/{logo_path}"
+                    else:
+                        image_url = "https://via.placeholder.com/120?text=No+Logo"
                     offers_list.append({
                         "res_id": restaurant_name,
                         "restaurant": restaurant_name or "",
@@ -188,8 +193,7 @@ def extract_offers_from_data(data):
                         "code": info.get("couponCode") or "",
                         "description": info.get("description") or "",
                         "discount": info.get("discountType") or "",
-                        "image": info.get("offerLogo") or "https://via.placeholder.com/120?text=No+Logo"
-                    })
+                        "image": image_url                    })
             except Exception:
                 continue
     except Exception:
